@@ -55,11 +55,11 @@ public:
      * If p is the nominal pixel position, and p' is the true position on the sky, then our
      * convention for the transform is that p' = distortion.applyForward(p)
      */
-    WarpedPsf(CONST_PTR(afw::detection::Psf) undistortedPsf,
-              CONST_PTR(afw::geom::TransformPoint2ToPoint2) distortion,
-              CONST_PTR(afw::math::WarpingControl) control);
-    WarpedPsf(CONST_PTR(afw::detection::Psf) undistortedPsf,
-              CONST_PTR(afw::geom::TransformPoint2ToPoint2) distortion,
+    WarpedPsf(std::shared_ptr<afw::detection::Psf const> undistortedPsf,
+              std::shared_ptr<afw::geom::TransformPoint2ToPoint2 const> distortion,
+              std::shared_ptr<afw::math::WarpingControl const> control);
+    WarpedPsf(std::shared_ptr<afw::detection::Psf const> undistortedPsf,
+              std::shared_ptr<afw::geom::TransformPoint2ToPoint2 const> distortion,
               std::string const& kernelName = "lanczos3", unsigned int cache = 10000);
 
     /**
@@ -70,22 +70,22 @@ public:
     virtual geom::Point2D getAveragePosition() const;
 
     /// Polymorphic deep copy.  Usually unnecessary, as Psfs are immutable.
-    virtual PTR(afw::detection::Psf) clone() const;
+    virtual std::shared_ptr<afw::detection::Psf> clone() const;
 
     /// Return a clone with specified kernel dimensions
-    virtual PTR(afw::detection::Psf) resized(int width, int height) const;
+    virtual std::shared_ptr<afw::detection::Psf> resized(int width, int height) const;
 
 protected:
-    virtual PTR(afw::detection::Psf::Image)
+    virtual std::shared_ptr<afw::detection::Psf::Image>
             doComputeKernelImage(geom::Point2D const& position, afw::image::Color const& color) const;
 
 protected:
-    PTR(afw::detection::Psf const) _undistortedPsf;
-    PTR(afw::geom::TransformPoint2ToPoint2 const) _distortion;
+    std::shared_ptr<afw::detection::Psf const> _undistortedPsf;
+    std::shared_ptr<afw::geom::TransformPoint2ToPoint2 const> _distortion;
 
 private:
     void _init();
-    CONST_PTR(afw::math::WarpingControl) _warpingControl;
+    std::shared_ptr<afw::math::WarpingControl const> _warpingControl;
 
     virtual geom::Box2I doComputeBBox(geom::Point2D const& position, afw::image::Color const& color) const;
 };

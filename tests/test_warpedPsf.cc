@@ -132,7 +132,7 @@ std::shared_ptr<lsst::afw::geom::TransformPoint2ToPoint2> makeRandomToyTransform
 // Helper function which fills an image with a normalized 2D Gaussian of the form
 //   exp(-a(x-px)^2/2 - b(x-px)(y-py) - c(y-py)^2/2)
 //
-static PTR(Image<double>) fill_gaussian(double a, double b, double c, double px, double py, 
+static std::shared_ptr<Image<double>> fill_gaussian(double a, double b, double c, double px, double py, 
                                         int nx, int ny, int x0, int y0)
 {
     // smallest eigenvalue
@@ -145,7 +145,7 @@ static PTR(Image<double>) fill_gaussian(double a, double b, double c, double px,
     assert(x0-px <= -width && x0-px+nx-1 >= width);
     assert(y0-py <= -width && y0-py+ny-1 >= width);
 
-    PTR(Image<double>) im = std::make_shared<Image<double> >(nx, ny);
+    std::shared_ptr<Image<double>> im = std::make_shared<Image<double> >(nx, ny);
     im->setXY0(x0, y0);
 
     double imSum = 0.0;
@@ -175,12 +175,12 @@ struct ToyPsf : public ImagePsf
 
     virtual ~ToyPsf() { }
     
-    virtual PTR(Psf) clone() const 
+    virtual std::shared_ptr<Psf> clone() const 
     { 
         return std::make_shared<ToyPsf>(_A, _B, _C, _D, _E, _F, _ksize);
     }
 
-    virtual PTR(Psf) resized(int width, int height) const
+    virtual std::shared_ptr<Psf> resized(int width, int height) const
     {
         return std::make_shared<ToyPsf>(_A, _B, _C, _D, _E, _F, width);
     }
@@ -199,7 +199,7 @@ struct ToyPsf : public ImagePsf
         return Box2I(Point2I(-_ksize, -_ksize), Extent2I(2*_ksize + 1, 2*_ksize + 1));
     }
 
-    virtual PTR(Image) doComputeKernelImage(Point2D const &ccdXY, Color const &) const {
+    virtual std::shared_ptr<Image> doComputeKernelImage(Point2D const &ccdXY, Color const &) const {
         double a, b, c;
         this->evalABC(a, b, c, ccdXY);
 
@@ -228,8 +228,8 @@ BOOST_AUTO_TEST_CASE(warpedPsf)
 {
     auto distortion = makeRandomToyTransform();
 
-    PTR(ToyPsf) unwarped_psf = ToyPsf::makeRandom(100);
-    PTR(WarpedPsf) warped_psf = std::make_shared<WarpedPsf> (unwarped_psf, distortion);
+    std::shared_ptr<ToyPsf> unwarped_psf = ToyPsf::makeRandom(100);
+    std::shared_ptr<WarpedPsf> warped_psf = std::make_shared<WarpedPsf> (unwarped_psf, distortion);
 
     Point2D p = randpt();
     Point2D q = distortion->applyInverse(p);
@@ -237,7 +237,7 @@ BOOST_AUTO_TEST_CASE(warpedPsf)
     BOOST_CHECK(dist(distortion->applyForward(q), p) < 1e-7);
 
     // warped image
-    PTR(Image<double>) im = warped_psf->computeImage(p);
+    std::shared_ptr<Image<double>> im = warped_psf->computeImage(p);
     int nx = im->getWidth();
     int ny = im->getHeight();
     int x0 = im->getX0();
@@ -259,7 +259,7 @@ BOOST_AUTO_TEST_CASE(warpedPsf)
     Eigen::Matrix2d m1 = md.transpose() * m0 * md;
 
     // this should be the same as the warped image, up to artifacts from warping/pixelization
-    PTR(Image<double>) im2 = fill_gaussian(m1(0,0), m1(0,1), m1(1,1), 
+    std::shared_ptr<Image<double>> im2 = fill_gaussian(m1(0,0), m1(0,1), m1(1,1), 
                                            p.getX(), p.getY(), nx, ny, x0, y0);
 
     // TODO: improve this test; the ideal thing would be to repeat with 
@@ -279,9 +279,9 @@ BOOST_AUTO_TEST_CASE(warpedPsfPadding) {
     auto distortion = makeRandomToyTransform();
 
     // Make psf with small kernel size  so that lack of padding is more apparent
-    PTR(ToyPsf) unwarped_psf = ToyPsf::makeRandom(7);
-    PTR(WarpedPsf) warped_psf = std::make_shared<WarpedPsf> (unwarped_psf, distortion);
-    PTR(Image<double>) warpedImage = warped_psf->computeKernelImage(Point2D(-10., 150.));
+    std::shared_ptr<ToyPsf> unwarped_psf = ToyPsf::makeRandom(7);
+    std::shared_ptr<WarpedPsf> warped_psf = std::make_shared<WarpedPsf> (unwarped_psf, distortion);
+    std::shared_ptr<Image<double>> warpedImage = warped_psf->computeKernelImage(Point2D(-10., 150.));
 
     // The outer columns and rows must test non-zero
     // Tolerance should be very low, because edges of small PSFs with large BBoxes
