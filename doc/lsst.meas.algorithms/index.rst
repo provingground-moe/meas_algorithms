@@ -8,6 +8,16 @@ lsst.meas.algorithms
 
 The ``lsst.meas.algorithms`` module provides a variety of astronomical measurement algorithms.
 
+.. _lsst.meas.algorithms-refcats:
+
+Creating LSST Reference Catalogs
+================================
+
+.. toctree::
+   :maxdepth: 1
+
+   refCatCreation
+
 .. _lsst.meas.algorithms-contributing:
 
 Contributing
