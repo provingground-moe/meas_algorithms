@@ -10,13 +10,13 @@ The ``lsst.meas.algorithms`` module provides a variety of astronomical measureme
 
 .. _lsst.meas.algorithms-refcats:
 
-Creating LSST Reference Catalogs
-================================
+LSST Reference Catalogs
+=======================
 
 .. toctree::
    :maxdepth: 1
 
-   refCatCreation
+   creating-a-reference-catalog
 
 .. _lsst.meas.algorithms-contributing:
 

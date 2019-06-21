@@ -2,31 +2,47 @@
 How to generate an LSST reference catalog
 #########################################
 
-The process for generating an LSST-style HTM indexed reference catalog is similar to that of running other LSST Tasks: write an appropriate ``Config`` and run :py:class:`~lsst.meas.algorithms.IngestIndexedReferenceTask`.
+The LSST Data Management Science Pipeline uses external reference catalogs to fit astrometric and photometric calibration models.
+In order to use these external catalogs with our software, we have to convert them into a common format.
+This page describes how to "ingest" an external catalog for use as a reference catalog for LSST.
+
+The process for generating an LSST-style HTM indexed reference catalog is similar to that of running other LSST Tasks: write an appropriate ``Config`` and run `~lsst.meas.algorithms.IngestIndexedReferenceTask`.
 The differences are in how you prepare the input data, what goes into that ``Config``, how you go about running the ``Task``, and what you do with the final output.
 
 Ingesting a large reference catalog can be a slow process.
-It took about 24 hours to ingest all of Gaia DR2 on an Intel i7-6700K (8 processes) with a 3-disk RAID 10 array.
+Ingesting all of Gaia DR2 took about 24 hours on a high-performance workstation running with 8 parallel processes, for example.
 
-You must gather your data before venturing forth
-================================================
+This page uses `Gaia DR2`_ as an example.
 
-:py:class:`~lsst.meas.algorithms.IngestIndexedReferenceTask` reads text or FITS files from an external catalog (e.g. ``GaiaSource*.csv.gz``).
+.. _Gaia DR2: https://www.cosmos.esa.int/web/gaia/dr2
+
+1. Gathering data
+=================
+
+`~lsst.meas.algorithms.IngestIndexedReferenceTask` reads text or FITS files from an external catalog (e.g. ``GaiaSource*.csv.gz``).
 In order to ingest these files, you must have a copy of them on a local disk.
-We recommend doing the ingestion on purely local (i.e. not neworked via NFS or GPFS) disk as much of the work is I/O bound, and networked filesystems are much less performant for operations involving tens of thousands of small files.
-Note that this may require significant storage space: the GaiaSource DR2 files take up 550 GB, and the resulting ingested LSST reference catalog takes another 200 GB.
+Network storage (such as NFS and GPFS) are not suitable for this work, due to performance issues involving tens of thousands of small files.
+Ensure that you have sufficient storage capacity.
+For example, the GaiaSource DR2 files take 550 GB of space, and the ingested LSST reference catalog takes another 200 GB.
 
 To write the config, you will need to have a document that describes the columns in the input data, including their units and any caveats that may apply (for example, Gaia DR2 does not supply magnitude errors).
 
-If the files are text files of some sort, check that you can read one of them with :py:func:`astropy.io.ascii.read`.
-The default Config assumes that the files are readable with ``format="csv"``; you can change that to a different ``format`` if necessary (see :py:class:`~lsst.meas.algorithms.ReadTextCatalogConfig` for how to configure the file reader).
+If the files are text files of some sort, check that you can read one of them with `astropy.io.ascii.read`, which is what the ingester uses to read text files. For example:
 
-Write a Config for the ingestion
-================================
+.. code-block:: python
 
-:py:class:`~lsst.meas.algorithms.IngestIndexedReferenceConfig` specifies what fields in the input files get translated to the output data, and how they are converted along the way. See the :py:class:`~lsst.meas.algorithms.IngestIndexedReferenceConfig` docs for the different available options.
+    import astropy.io.ascii
+    data = astropy.io.ascii.read('gaia_source/GaiaSource_1000172165251650944_1000424567594791808.csv.gz', format='csv')
+    print(data)
 
-This is an example configuration that was used to ingest the Gaia DR2 catalog.
+The default Config assumes that the files are readable with ``format="csv"``; you can change that to a different ``format`` if necessary (see `~lsst.meas.algorithms.ReadTextCatalogConfig` for how to configure the file reader).
+
+2. Write a Config for the ingestion
+===================================
+
+`~lsst.meas.algorithms.IngestIndexedReferenceConfig` specifies what fields in the input files get translated to the output data, and how they are converted along the way. See the `~lsst.meas.algorithms.IngestIndexedReferenceConfig` docs for the different available options.
+
+This is an example configuration that was used to ingest the Gaia DR2 catalog:
 
 .. code-block:: python
 
@@ -67,15 +83,15 @@ This is an example configuration that was used to ingest the Gaia DR2 catalog.
     extra_col_names = ["astrometric_excess_noise", "phot_variable_flag"]
 
 
-Ingest the files
-================
+3. Ingest the files
+===================
 
-The main difference when running :py:class:`~lsst.meas.algorithms.IngestIndexedReferenceTask` compared with other LSST tasks is that you specify the full list of files to be ingested.
-For many input catalogs, this may be tens of thousands of files: more than most commandline shells support.
-We can use the python :py:mod:`glob` package to write a small script to make the process easier.
+The main difference when running `~lsst.meas.algorithms.IngestIndexedReferenceTask` compared with other LSST tasks is that you specify the full list of files to be ingested.
+For many input catalogs, this may be tens of thousands of files: more than most shells support.
+Instead, you can write a small Python script that finds files with the `glob` package to run the ``IngestIndexedReferenceTask`` task programatically.
 
 Here is a sample script that was used to generate the Gaia DR2 refcat.
-Note the lines that should be modified at the top, specifying the config, input, output and an existing butler repo.
+Note the lines that should be modified at the top, specifying the config, input, output and an existing butler repo:
 
 .. code-block:: python
 
@@ -111,35 +127,33 @@ Note the lines that should be modified at the top, specifying the config, input,
     IngestIndexedReferenceTask.parseAndRun(args=args, config=config)
 
 To run it, first ``setup meas_algorithms``, and, assuming the file above is
-saved as ``ingestGaiaDr2.py``, run it:
+saved as ``ingestGaiaDr2.py``, run it and send the output to a log file:
 
-.. code-block:: none
+.. code-block:: sh
 
     python ingestGaiaDr2.py &> ingest.log
 
-and send the output to a log file.
 Monitor the log file in a new terminal with:
 
-.. code-block:: none
+.. code-block:: sh
 
     tail -f ingest.log
 
-and check back in several hours: it reports progress in 1% intervals.
+Check the log ouput after several hours.
+``IngestIndexedReferenceTask`` reports progress in 1% intervals.
 
-Check the ingested files
-========================
+4. Check the ingested files
+===========================
 
 Once you have ingested the reference catalog, you can spot check the output to see if the objects were transfered.
 To do this, ``setup meas_algorithms`` and run ``check_ingested_reference_catalog.py``.
 See its help (specify ``-h`` on the commandline) for details about options and an example command.
 If you only ingested a subset of the catalog, you can specify just the files you ran the ingest step on to only check those specific files.
 
-Move the output to the correct location
-=======================================
+5. Move the output to the correct location
+==========================================
 
-Once you have successfully ingested the refcat, it needs to be moved into an existing butler repository's ``ref_cats`` directory.
-On ``lsst-dev`` all of our common reference catalogs live in ``/datasets/refcats/htm/v1``.
-That directory is symlinked to in the appropriate butler repositories.
-Follow the instructions for how to add to ``/datasets`` in the developer guide `datasets policy`_ document.
+Once you have successfully ingested the refcat, it needs to be moved into an existing Gen2 butler repository's ``ref_cats`` directory (instructions for Gen3 will be provided once they are available).
+For LSST staff using ``lsst-dev``, see the `Reference catalogs policy <https://developer.lsst.io/services/datasets.html#reference-catalogs>`_ in the Developer Guide.
 
 .. _datasets policy: https://developer.lsst.io/services/datasets.html
